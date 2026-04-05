@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Equity Tracker v7.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
+        .search-container { position: relative; z-index: 100; }
+        #suggestionBox { 
+            position: absolute; z-index: 9999; width: 100%; top: 100%; left: 0;
+            background: white; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); border-radius: 0.75rem;
+        }
+        .dropdown-item:active { background: #f1f5f9; }
+        .is-hit { background-color: #dcfce7; color: #166534; font-weight: 700; }
+        
+        /* Sticky Header for Mobile Scrolling */
+        thead th { position: sticky; top: 0; z-index: 20; background-color: #0f172a; }
+        
+        /* Custom Scrollbar for clean look */
+        .overflow-x-auto::-webkit-scrollbar { height: 4px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-3 md:p-8 font-sans text-slate-900">
+
+    <div class="max-w-full mx-auto">
+        <header class="mb-6 flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-indigo-900 leading-tight">ATH Watchlist</h1>
+                <button onclick="refreshAllPrices()" class="bg-emerald-600 active:scale-95 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition-all flex items-center gap-2">
+                    <span id="refreshIcon">🔄</span> Sync
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 italic">Enter ATH manually for accurate drawdown targets.</p>
+        </header>
+
+        <div class="glass-card rounded-xl p-4 mb-6 shadow-sm search-container">
+            <input type="hidden" id="autoCapValue" value="Small Cap">
+            <div class="flex flex-col gap-4">
+                <div class="relative">
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Search Stock</label>
+                    <input type="text" id="stockSearch" oninput="searchStocks(this.value)" placeholder="RELIANCE, AARTI, etc." class="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-indigo-500 outline-none uppercase text-base">
+                    <div id="suggestionBox" class="border rounded-lg hidden max-h-60 overflow-y-auto mt-1"></div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">ATH (₹)</label>
+                        <input type="number" id="stockHigh" placeholder="Value" class="w-full p-3 border-2 border-slate-100 rounded-lg outline-none text-base">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Current (₹)</label>
+                        <input type="number" id="stockCurrent" readonly class="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-lg text-slate-400 text-base">
+                    </div>
+                </div>
+
+                <button onclick="saveStock()" class="w-full bg-indigo-600 active:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md transition-all">
+                    + Add to Watchlist
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-card rounded-xl shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[1200px]">
+                    <thead class="text-white text-[10px] uppercase tracking-wider">
+                        <tr>
+                            <th class="p-4" onclick="sortData('name')">Stock ↕</th>
+                            <th class="p-4" onclick="sortData('cap')">Cap ↕</th>
+                            <th class="p-4 text-center">ATH</th>
+                            <th class="p-4 text-center" onclick="sortData('current')">Price ↕</th>
+                            <th class="p-4 text-center" onclick="sortData('drawdown')">Drop ↕</th>
+                            <th class="p-4 text-center bg-red-900/90">-10%</th>
+                            <th class="p-4 text-center bg-red-900/90">-20%</th>
+                            <th class="p-4 text-center bg-red-900/90">-30%</th>
+                            <th class="p-4 text-center bg-red-900/90">-40%</th>
+                            <th class="p-4 text-center bg-red-900/90">-50%</th>
+                            <th class="p-4 text-center bg-red-800/90">-60%</th>
+                            <th class="p-4 text-center bg-red-800/90">-70%</th>
+                            <th class="p-4 text-center bg-red-800/90">-80%</th>
+                            <th class="p-4 text-center">X</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlistBody" class="bg-white divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '8572da2f27msh02d85ab8024e65dp174804jsn91d9d3efb8dd'; 
+        let stocks = JSON.parse(localStorage.getItem('myWatchlist')) || [];
+        let sortDir = true;
+
+        async function searchStocks(q) {
+            const box = document.getElementById('suggestionBox');
+            if (q.length < 2) { box.classList.add('hidden'); return; }
+            try {
+                const res = await fetch(`https://yh-finance.p.rapidapi.com/auto-complete?q=${q}&region=IN`, {
+                    headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'yh-finance.p.rapidapi.com' }
+                });
+                const data = await res.json();
+                box.innerHTML = ''; box.classList.remove('hidden');
+                data.quotes.filter(x => x.symbol.endsWith('.NS') || x.symbol.endsWith('.BO')).forEach(x => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 text-sm border-b border-slate-50 active:bg-slate-100 flex justify-between';
+                    div.innerHTML = `<span><strong>${x.symbol}</strong> <small class="text-slate-400">(${x.shortname || ''})</small></span>`;
+                    div.onclick = () => selectStock(x.symbol);
+                    box.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function selectStock(symbol) {
+            document.getElementById('stockSearch').value = symbol;
+            document.getElementById('suggestionBox').classList.add('hidden');
+            const data = await getLiveDetails(symbol);
+            if (data) {
+                document.getElementById('stockCurrent').value = data.price;
+                document.getElementById('stockHigh').value = data.high; 
+                document.getElementById('autoCapValue').value = data.cap;
+            }
+        }
+
+        async function getLiveDetails(symbol) {
+            try {
+                const res = await fetch(`https://yh-finance.p.rapidapi.com/market/v2/get-quotes?region=IN&symbols=${symbol}`, {
+                    headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'yh-finance.p.rapidapi.com' }
+                });
+                const r = await res.json();
+                const d = r.quoteResponse.result[0];
+                const mc = d.marketCap || 0;
+                return {
+                    price: d.regularMarketPrice.toFixed(2),
+                    high: Math.max(d.fiftyTwoWeekHigh, d.regularMarketPrice).toFixed(2),
+                    cap: mc > 2000000000000 ? "Large" : (mc > 500000000000 ? "Mid" : "Small")
+                };
+            } catch (e) { return null; }
+        }
+
+        async function refreshAllPrices() {
+            if (!stocks.length) return;
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('animate-spin');
+            for (let i = 0; i < stocks.length; i++) {
+                const d = await getLiveDetails(stocks[i].name);
+                if (d) {
+                    stocks[i].current = d.price;
+                    if (parseFloat(d.price) > parseFloat(stocks[i].high)) stocks[i].high = d.price;
+                    stocks[i].drawdown = (((stocks[i].high - stocks[i].current) / stocks[i].high) * 100).toFixed(1);
+                }
+            }
+            updateUI();
+            icon.classList.remove('animate-spin');
+        }
+
+        function saveStock() {
+            const name = document.getElementById('stockSearch').value.toUpperCase();
+            const high = parseFloat(document.getElementById('stockHigh').value);
+            const current = parseFloat(document.getElementById('stockCurrent').value);
+            const cap = document.getElementById('autoCapValue').value;
+
+            if (stocks.find(s => s.name === name)) return alert("Already added.");
+            if (!name || isNaN(high)) return alert("Check inputs.");
+            
+            const dd = (((high - current) / high) * 100).toFixed(1);
+            stocks.push({ name, cap, high, current, drawdown: dd });
+            updateUI();
+            document.getElementById('stockSearch').value = '';
+            document.getElementById('stockHigh').value = '';
+            document.getElementById('stockCurrent').value = '';
+        }
+
+        function updateUI() {
+            localStorage.setItem('myWatchlist', JSON.stringify(stocks));
+            const tbody = document.getElementById('watchlistBody');
+            tbody.innerHTML = '';
+            stocks.forEach((s, i) => {
+                let capCol = s.cap === 'Large' ? 'text-blue-600' : s.cap === 'Mid' ? 'text-purple-600' : 'text-orange-600';
+                let row = `<tr class="text-[12px]">
+                    <td class="p-4 font-bold text-slate-800">${s.name}</td>
+                    <td class="p-4 font-black uppercase ${capCol}">${s.cap}</td>
+                    <td class="p-4 text-center text-slate-400 font-mono">₹${s.high}</td>
+                    <td class="p-4 text-center font-bold text-indigo-600 font-mono">₹${s.current}</td>
+                    <td class="p-4 text-center"><span class="bg-red-50 text-red-600 px-2 py-0.5 rounded font-black">-${s.drawdown}%</span></td>`;
+                
+                for (let j = 1; j <= 8; j++) {
+                    let v = (s.high * (1 - (j * 10 / 100))).toFixed(2);
+                    let hit = parseFloat(s.current) <= parseFloat(v) ? 'is-hit' : 'text-slate-300 font-mono';
+                    row += `<td class="p-4 text-center border-l border-slate-50 ${hit}">₹${v}</td>`;
+                }
+                row += `<td class="p-4 text-center"><button onclick="removeStock(${i})" class="text-slate-300 px-2">✕</button></td></tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function sortData(key) {
+            sortDir = !sortDir;
+            stocks.sort((a, b) => {
+                let vA = isNaN(a[key]) ? a[key] : parseFloat(a[key]);
+                let vB = isNaN(b[key]) ? b[key] : parseFloat(b[key]);
+                return sortDir ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
+            });
+            updateUI();
+        }
+
+        function removeStock(i) { if(confirm('Remove?')) { stocks.splice(i, 1); updateUI(); } }
+        updateUI();
+    </script>
+</body>
+</html>

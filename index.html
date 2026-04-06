@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portfolio ATH Tracker (Offline Edition)</title>
+    <title>Portfolio ATH Tracker (Target Planner)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .glass-card { background: white; border: 1px solid #e2e8f0; }
-        .is-hit { background-color: #dcfce7; color: #166534; font-weight: 700; }
-        .is-invested { background-color: #1e3a8a !important; color: white !important; }
+        .is-invested { background-color: #1e3a8a !important; color: white !important; font-weight: bold; }
         .is-priority { background-color: #fef9c3 !important; color: #a16207 !important; border-left: 4px solid #eab308 !important; }
         thead th { position: sticky; top: 0; z-index: 30; background-color: #0f172a; cursor: pointer; border-right: 1px solid #334155; }
         thead th:hover { background-color: #1e293b; }
@@ -22,13 +21,13 @@
         <header class="mb-6 flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-indigo-900 leading-tight">Investment ATH Tracker</h1>
-                <p class="text-xs text-slate-500 font-medium">100% Offline. Click ✎ to Edit. Click Stock Name to Highlight.</p>
+                <p class="text-xs text-slate-500 font-medium">100% Offline Target Planner. Click Stock Name to Highlight. Tap % to mark as Invested.</p>
             </div>
         </header>
 
         <div class="glass-card rounded-xl p-4 mb-6 shadow-sm border-indigo-200 border-2">
             <input type="hidden" id="editIndex" value="-1">
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Stock Symbol</label>
                     <input type="text" id="stockSearch" placeholder="RELAXO.NS" class="w-full p-2 border rounded-lg outline-none uppercase font-bold text-indigo-900">
@@ -38,15 +37,12 @@
                     <input type="number" id="stockHigh" class="w-full p-2 border rounded-lg outline-none" step="any">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Current Price (₹)</label>
-                    <input type="number" id="stockCurrent" class="w-full p-2 border rounded-lg outline-none" step="any">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Market Cap</label>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Category</label>
                     <select id="manualCap" class="w-full p-2 border rounded-lg bg-white">
                         <option value="Large">Large Cap</option>
                         <option value="Mid">Mid Cap</option>
                         <option value="Small">Small Cap</option>
+                        <option value="Index">Index</option>
                         <option value="ETF">ETF</option>
                     </select>
                 </div>
@@ -58,14 +54,12 @@
 
         <div class="glass-card rounded-xl shadow-lg overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[1450px]">
+                <table class="w-full text-left min-w-[1200px]">
                     <thead class="text-white text-[10px] uppercase">
                         <tr>
-                            <th class="p-4 sticky-col bg-slate-900" onclick="sortData('name')">Stock ↕</th>
-                            <th class="p-4" onclick="sortData('cap')">Cap ↕</th>
+                            <th class="p-4 sticky-col bg-slate-900" onclick="sortData('name')">Asset ↕</th>
+                            <th class="p-4" onclick="sortData('cap')">Cap/Type ↕</th>
                             <th class="p-4 text-center" onclick="sortData('high')">Exact ATH ↕</th>
-                            <th class="p-4 text-center" onclick="sortData('current')">Current Price ↕</th>
-                            <th class="p-4 text-center" onclick="sortData('drawdown')">Drop % ↕</th>
                             <th class="p-4 text-center bg-red-900/90">-10%</th>
                             <th class="p-4 text-center bg-red-900/90">-20%</th>
                             <th class="p-4 text-center bg-red-900/90">-30%</th>
@@ -85,68 +79,70 @@
 
     <script>
         const initialPortfolio = [
-            { name: "GGBL.NS", cap: "Small", high: 635.00, current: 250.85 },
-            { name: "MUTHOOTFIN.NS", cap: "Large", high: 4149.50, current: 1525.89 },
-            { name: "ZENTEC.NS", cap: "Mid", high: 2268.00, current: 1377.00 },
-            { name: "SENCO.NS", cap: "Small", high: 1544.00, current: 322.45 },
-            { name: "HDFCAMC.NS", cap: "Large", high: 3844.00, current: 2387.20 },
-            { name: "NETWEB.NS", cap: "Mid", high: 4479.00, current: 3222.00 },
-            { name: "DMART.NS", cap: "Large", high: 5900.00, current: 4548.20 },
-            { name: "JIOFIN.NS", cap: "Large", high: 394.70, current: 235.50 },
-            { name: "BAJAJFINSV.NS", cap: "Large", high: 1932.50, current: 1670.10 },
-            { name: "HAPPISTMND.NS", cap: "Small", high: 1580.80, current: 385.45 },
-            { name: "NEOGEN.NS", cap: "Small", high: 1950.00, current: 1194.50 },
-            { name: "BAJFINANCE.NS", cap: "Large", high: 8192.00, current: 850.90 },
-            { name: "HINDUNILVR.NS", cap: "Large", high: 2859.30, current: 2088.20 },
-            { name: "MAFANG.NS", cap: "ETF", high: 162.00, current: 156.81 },
-            { name: "METROPOLIS.NS", cap: "Mid", high: 3582.80, current: 430.50 },
-            { name: "HDFCBANK.NS", cap: "Large", high: 1757.80, current: 772.30 },
-            { name: "ROUTE.NS", cap: "Small", high: 2389.00, current: 462.05 },
-            { name: "ALKYLAMINE.NS", cap: "Small", high: 4749.00, current: 1321.50 },
-            { name: "DIXON.NS", cap: "Large", high: 11500.00, current: 10005.50 },
-            { name: "IEX.NS", cap: "Mid", high: 318.40, current: 126.41 },
-            { name: "RELAXO.NS", cap: "Mid", high: 1448.00, current: 272.83 },
-            { name: "CAMS.NS", cap: "Mid", high: 4532.00, current: 668.50 },
-            { name: "RTNINDIA.NS", cap: "Small", high: 84.00, current: 28.90 },
-            { name: "IRCTC.NS", cap: "Large", high: 1279.30, current: 515.20 },
-            { name: "AEROFLEX.NS", cap: "Small", high: 255.30, current: 255.30 },
-            { name: "ASIANPAINT.NS", cap: "Large", high: 3590.00, current: 2185.00 },
-            { name: "LICI.NS", cap: "Large", high: 1175.00, current: 744.55 },
-            { name: "BRITANNIA.NS", cap: "Large", high: 6468.00, current: 5528.00 },
-            { name: "DEEPAKNTR.NS", cap: "Mid", high: 3020.00, current: 1388.10 },
-            { name: "INFY.NS", cap: "Large", high: 1953.90, current: 1306.30 },
-            { name: "RELIANCE.NS", cap: "Large", high: 3217.90, current: 1305.60 },
-            { name: "LTIM.NS", cap: "Large", high: 7588.80, current: 4303.70 },
-            { name: "CLEAN.NS", cap: "Mid", high: 2705.00, current: 694.80 },
-            { name: "AARTIIND.NS", cap: "Mid", high: 1168.00, current: 404.45 },
-            { name: "DIVISLAB.NS", cap: "Large", high: 5425.10, current: 3600.50 },
-            { name: "SBICARD.NS", cap: "Large", high: 1164.00, current: 634.90 },
-            { name: "ULTRACEMCO.NS", cap: "Large", high: 12100.00, current: 10954.00 },
-            { name: "SUPRIYA.NS", cap: "Small", high: 615.20, current: 615.25 },
-            { name: "AFFLE.NS", cap: "Small", high: 1640.00, current: 1417.60 },
-            { name: "INDIAMART.NS", cap: "Mid", high: 9950.00, current: 2067.00 },
-            { name: "LATENTVIEW.NS", cap: "Small", high: 750.00, current: 300.15 },
-            { name: "ROLEXRINGS.NS", cap: "Small", high: 2600.00, current: 120.15 },
-            { name: "LALPATHLAB.NS", cap: "Mid", high: 4245.00, current: 1353.80 },
-            { name: "HDFCLIFE.NS", cap: "Large", high: 775.65, current: 579.60 },
-            { name: "NAUKRI.NS", cap: "Large", high: 7465.40, current: 992.25 },
-            { name: "JUBLFOOD.NS", cap: "Large", high: 950.00, current: 461.15 },
-            { name: "ASTRAL.NS", cap: "Large", high: 2450.00, current: 1522.00 },
-            { name: "LTTS.NS", cap: "Large", high: 6000.00, current: 3345.40 },
-            { name: "AARTIPHARM.NS", cap: "Small", high: 800.00, current: 649.00 },
-            { name: "BERGEPAINT.NS", cap: "Large", high: 854.00, current: 431.90 },
-            { name: "HLEGLAS.NS", cap: "Small", high: 1550.00, current: 271.35 }
+            { name: "NIFTY 50", cap: "Index", high: 26277.35 },
+            { name: "NIFTY MIDCAP 100", cap: "Index", high: 60976.20 },
+            { name: "NIFTY SMALLCAP 100", cap: "Index", high: 19641.50 },
+            { name: "GGBL.NS", cap: "Small", high: 635.00 },
+            { name: "MUTHOOTFIN.NS", cap: "Large", high: 4149.50 },
+            { name: "ZENTEC.NS", cap: "Mid", high: 2268.00 },
+            { name: "SENCO.NS", cap: "Small", high: 1544.00 },
+            { name: "HDFCAMC.NS", cap: "Large", high: 3844.00 },
+            { name: "NETWEB.NS", cap: "Mid", high: 4479.00 },
+            { name: "DMART.NS", cap: "Large", high: 5900.00 },
+            { name: "JIOFIN.NS", cap: "Large", high: 394.70 },
+            { name: "BAJAJFINSV.NS", cap: "Large", high: 1932.50 },
+            { name: "HAPPISTMND.NS", cap: "Small", high: 1580.80 },
+            { name: "NEOGEN.NS", cap: "Small", high: 1950.00 },
+            { name: "BAJFINANCE.NS", cap: "Large", high: 8192.00 },
+            { name: "HINDUNILVR.NS", cap: "Large", high: 2859.30 },
+            { name: "MAFANG.NS", cap: "ETF", high: 162.00 },
+            { name: "METROPOLIS.NS", cap: "Mid", high: 3582.80 },
+            { name: "HDFCBANK.NS", cap: "Large", high: 1757.80 },
+            { name: "ROUTE.NS", cap: "Small", high: 2389.00 },
+            { name: "ALKYLAMINE.NS", cap: "Small", high: 4749.00 },
+            { name: "DIXON.NS", cap: "Large", high: 11500.00 },
+            { name: "IEX.NS", cap: "Mid", high: 318.40 },
+            { name: "RELAXO.NS", cap: "Mid", high: 1448.00 },
+            { name: "CAMS.NS", cap: "Mid", high: 4532.00 },
+            { name: "RTNINDIA.NS", cap: "Small", high: 84.00 },
+            { name: "IRCTC.NS", cap: "Large", high: 1279.30 },
+            { name: "AEROFLEX.NS", cap: "Small", high: 255.30 },
+            { name: "ASIANPAINT.NS", cap: "Large", high: 3590.00 },
+            { name: "LICI.NS", cap: "Large", high: 1175.00 },
+            { name: "BRITANNIA.NS", cap: "Large", high: 6468.00 },
+            { name: "DEEPAKNTR.NS", cap: "Mid", high: 3020.00 },
+            { name: "INFY.NS", cap: "Large", high: 1953.90 },
+            { name: "RELIANCE.NS", cap: "Large", high: 3217.90 },
+            { name: "LTIM.NS", cap: "Large", high: 7588.80 },
+            { name: "CLEAN.NS", cap: "Mid", high: 2705.00 },
+            { name: "AARTIIND.NS", cap: "Mid", high: 1168.00 },
+            { name: "DIVISLAB.NS", cap: "Large", high: 5425.10 },
+            { name: "SBICARD.NS", cap: "Large", high: 1164.00 },
+            { name: "ULTRACEMCO.NS", cap: "Large", high: 12100.00 },
+            { name: "SUPRIYA.NS", cap: "Small", high: 615.20 },
+            { name: "AFFLE.NS", cap: "Small", high: 1640.00 },
+            { name: "INDIAMART.NS", cap: "Mid", high: 9950.00 },
+            { name: "LATENTVIEW.NS", cap: "Small", high: 750.00 },
+            { name: "ROLEXRINGS.NS", cap: "Small", high: 2600.00 },
+            { name: "LALPATHLAB.NS", cap: "Mid", high: 4245.00 },
+            { name: "HDFCLIFE.NS", cap: "Large", high: 775.65 },
+            { name: "NAUKRI.NS", cap: "Large", high: 7465.40 },
+            { name: "JUBLFOOD.NS", cap: "Large", high: 950.00 },
+            { name: "ASTRAL.NS", cap: "Large", high: 2450.00 },
+            { name: "LTTS.NS", cap: "Large", high: 6000.00 },
+            { name: "AARTIPHARM.NS", cap: "Small", high: 800.00 },
+            { name: "BERGEPAINT.NS", cap: "Large", high: 854.00 },
+            { name: "HLEGLAS.NS", cap: "Small", high: 1550.00 }
         ];
 
-        // Ensure clean slate for priority feature addition if needed
-        if(localStorage.getItem('apiTrackerResetV3') !== 'true') {
+        // Force a reset to load the new data structure (without current prices) into local storage
+        if(localStorage.getItem('apiTrackerResetV5') !== 'true') {
             localStorage.removeItem('myWatchlist');
-            localStorage.setItem('apiTrackerResetV3', 'true');
+            localStorage.setItem('apiTrackerResetV5', 'true');
         }
 
         let stocks = JSON.parse(localStorage.getItem('myWatchlist')) || initialPortfolio.map(s => {
-            let dd = (((s.high - s.current) / s.high) * 100).toFixed(1);
-            return { ...s, drawdown: dd, invested: [], isPriority: false };
+            return { ...s, invested: [], isPriority: false };
         });
 
         let sortDir = {};
@@ -154,19 +150,15 @@
         function saveStock() {
             const name = document.getElementById('stockSearch').value.toUpperCase().trim();
             const high = parseFloat(document.getElementById('stockHigh').value);
-            const current = parseFloat(document.getElementById('stockCurrent').value);
             const cap = document.getElementById('manualCap').value;
             const editIndex = parseInt(document.getElementById('editIndex').value);
 
-            if (!name || isNaN(high) || isNaN(current)) return alert("Enter Symbol, Exact ATH, and Current Price");
+            if (!name || isNaN(high)) return alert("Enter Symbol and Exact ATH");
 
-            const dd = (((high - current) / high) * 100).toFixed(1);
             const stockData = { 
                 name, 
                 high, 
-                current, 
                 cap, 
-                drawdown: dd, 
                 invested: (editIndex > -1 ? stocks[editIndex].invested : []),
                 isPriority: (editIndex > -1 ? stocks[editIndex].isPriority : false)
             };
@@ -184,7 +176,6 @@
             const s = stocks[index];
             document.getElementById('stockSearch').value = s.name;
             document.getElementById('stockHigh').value = s.high;
-            document.getElementById('stockCurrent').value = s.current;
             document.getElementById('manualCap').value = s.cap;
             document.getElementById('editIndex').value = index;
             document.getElementById('saveBtn').innerText = "Update Entry";
@@ -209,26 +200,25 @@
             const tbody = document.getElementById('watchlistBody');
             tbody.innerHTML = '';
             stocks.forEach((s, i) => {
-                let capCol = s.cap === 'Large' ? 'text-blue-600' : (s.cap === 'Mid' ? 'text-purple-600' : 'text-orange-600');
+                let capCol = s.cap === 'Large' ? 'text-blue-600' : 
+                             (s.cap === 'Mid' ? 'text-purple-600' : 
+                             (s.cap === 'Index' ? 'text-emerald-600' : 'text-orange-600'));
                 
-                // Set classes and icon for priority highlight
                 let priorityClass = s.isPriority ? 'is-priority' : 'bg-white border-r border-slate-200';
                 let priorityIcon = s.isPriority ? '★ ' : '';
 
-                let row = `<tr class="text-[12px] group">
+                let row = `<tr class="text-[12px] group hover:bg-slate-50 transition-colors">
                     <td class="p-4 font-bold sticky-col cursor-pointer transition-colors ${priorityClass}" onclick="togglePriority(${i})" title="Click to highlight as priority investment">
                         ${priorityIcon}${s.name}
                     </td>
                     <td class="p-4 font-black uppercase ${capCol}">${s.cap}</td>
-                    <td class="p-4 text-center font-mono font-semibold text-slate-500">₹${s.high.toFixed(2)}</td>
-                    <td class="p-4 text-center font-bold text-indigo-600 font-mono">₹${s.current.toFixed(2)}</td>
-                    <td class="p-4 text-center"><span class="bg-red-50 text-red-600 px-2 py-0.5 rounded font-black">-${s.drawdown}%</span></td>`;
+                    <td class="p-4 text-center font-mono font-semibold text-slate-800">₹${s.high.toFixed(2)}</td>`;
                 
                 for (let j = 1; j <= 8; j++) {
                     let v = (s.high * (1 - (j * 10 / 100))).toFixed(2);
-                    let hit = (parseFloat(s.current) > 0 && parseFloat(s.current) <= parseFloat(v)) ? 'is-hit' : 'text-slate-300 font-mono';
-                    let inv = (s.invested && s.invested.includes(j)) ? 'is-invested' : '';
-                    row += `<td class="p-4 text-center border-l border-slate-50 cursor-pointer ${hit} ${inv}" onclick="toggleInvested(${i}, ${j})">₹${v}</td>`;
+                    let isInv = (s.invested && s.invested.includes(j));
+                    let invClass = isInv ? 'is-invested' : 'text-slate-500';
+                    row += `<td class="p-4 text-center border-l border-slate-100 cursor-pointer font-mono hover:bg-slate-200 ${invClass}" onclick="toggleInvested(${i}, ${j})">₹${v}</td>`;
                 }
                 row += `<td class="p-4 text-center"><div class="flex gap-2 justify-center">
                     <button onclick="editStock(${i})" class="text-indigo-400 hover:text-indigo-600">✎</button>
@@ -251,7 +241,6 @@
         function resetForm() {
             document.getElementById('stockSearch').value = '';
             document.getElementById('stockHigh').value = '';
-            document.getElementById('stockCurrent').value = '';
             document.getElementById('editIndex').value = '-1';
             document.getElementById('saveBtn').innerText = "Save Changes";
         }

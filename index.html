@@ -3,77 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Equity Tracker v8.0</title>
+    <title>Portfolio ATH Tracker (Offline Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
-        .search-container { position: relative; z-index: 100; }
-        #suggestionBox { 
-            position: absolute; z-index: 9999; width: 100%; top: 100%; left: 0;
-            background: white; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); border-radius: 0.75rem;
-        }
-        .dropdown-item:active { background: #f1f5f9; }
-        
-        /* Auto-highlight when price hits target */
+        .glass-card { background: white; border: 1px solid #e2e8f0; }
         .is-hit { background-color: #dcfce7; color: #166534; font-weight: 700; }
-        
-        /* User selection: "Invested" status */
-        .is-invested { background-color: #1e3a8a !important; color: white !important; font-weight: 800; border: 1px solid #1e40af; }
-        
-        thead th { position: sticky; top: 0; z-index: 20; background-color: #0f172a; }
-        .overflow-x-auto::-webkit-scrollbar { height: 4px; }
-        .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .is-invested { background-color: #1e3a8a !important; color: white !important; }
+        thead th { position: sticky; top: 0; z-index: 30; background-color: #0f172a; cursor: pointer; border-right: 1px solid #334155; }
+        thead th:hover { background-color: #1e293b; }
+        .sticky-col { position: sticky; left: 0; background: white; z-index: 10; border-right: 2px solid #f1f5f9; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-3 md:p-8 font-sans text-slate-900">
+<body class="bg-slate-50 min-h-screen p-3 md:p-8 text-slate-900">
 
     <div class="max-w-full mx-auto">
-        <header class="mb-6 flex flex-col gap-4">
-            <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-indigo-900 leading-tight">ATH Watchlist</h1>
-                <button onclick="refreshAllPrices()" class="bg-emerald-600 active:scale-95 text-white font-bold py-2 px-4 rounded-lg shadow text-sm transition-all flex items-center gap-2">
-                    <span id="refreshIcon">🔄</span> Sync
-                </button>
+        <header class="mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-900 leading-tight">Investment ATH Tracker</h1>
+                <p class="text-xs text-slate-500 font-medium">100% Offline Mode. Click ✎ to Edit ATH or Live Price.</p>
             </div>
-            <p class="text-xs text-slate-500 italic">Tap any ₹ value below to mark it as <b>Invested</b>.</p>
         </header>
 
-        <div class="glass-card rounded-xl p-4 mb-6 shadow-sm search-container">
-            <input type="hidden" id="autoCapValue" value="Small Cap">
-            <div class="flex flex-col gap-4">
-                <div class="relative">
-                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Search Stock</label>
-                    <input type="text" id="stockSearch" oninput="searchStocks(this.value)" placeholder="RELIANCE, AARTI, etc." class="w-full p-3 border-2 border-slate-100 rounded-lg focus:border-indigo-500 outline-none uppercase text-base">
-                    <div id="suggestionBox" class="border rounded-lg hidden max-h-60 overflow-y-auto mt-1"></div>
+        <div class="glass-card rounded-xl p-4 mb-6 shadow-sm border-indigo-200 border-2">
+            <input type="hidden" id="editIndex" value="-1">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Stock Symbol</label>
+                    <input type="text" id="stockSearch" placeholder="RELAXO.NS" class="w-full p-2 border rounded-lg outline-none uppercase font-bold text-indigo-900">
                 </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">ATH (₹)</label>
-                        <input type="number" id="stockHigh" placeholder="Value" class="w-full p-3 border-2 border-slate-100 rounded-lg outline-none text-base">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Current (₹)</label>
-                        <input type="number" id="stockCurrent" readonly class="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-lg text-slate-400 text-base">
-                    </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Exact ATH (₹)</label>
+                    <input type="number" id="stockHigh" class="w-full p-2 border rounded-lg outline-none" step="any">
                 </div>
-
-                <button onclick="saveStock()" class="w-full bg-indigo-600 active:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md transition-all">
-                    + Add to Watchlist
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Current Price (₹)</label>
+                    <input type="number" id="stockCurrent" class="w-full p-2 border rounded-lg outline-none" step="any">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Market Cap</label>
+                    <select id="manualCap" class="w-full p-2 border rounded-lg bg-white">
+                        <option value="Large">Large Cap</option>
+                        <option value="Mid">Mid Cap</option>
+                        <option value="Small">Small Cap</option>
+                        <option value="ETF">ETF</option>
+                    </select>
+                </div>
+                <button onclick="saveStock()" id="saveBtn" class="bg-indigo-600 text-white font-bold py-2 rounded-lg shadow-md active:bg-indigo-800">
+                    Save Changes
                 </button>
             </div>
         </div>
 
         <div class="glass-card rounded-xl shadow-lg overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[1200px]">
-                    <thead class="text-white text-[10px] uppercase tracking-wider">
+                <table class="w-full text-left min-w-[1450px]">
+                    <thead class="text-white text-[10px] uppercase">
                         <tr>
-                            <th class="p-4" onclick="sortData('name')">Stock ↕</th>
+                            <th class="p-4 sticky-col bg-slate-900" onclick="sortData('name')">Stock ↕</th>
                             <th class="p-4" onclick="sortData('cap')">Cap ↕</th>
-                            <th class="p-4 text-center">ATH</th>
-                            <th class="p-4 text-center" onclick="sortData('current')">Price ↕</th>
-                            <th class="p-4 text-center" onclick="sortData('drawdown')">Drop ↕</th>
+                            <th class="p-4 text-center" onclick="sortData('high')">Exact ATH ↕</th>
+                            <th class="p-4 text-center" onclick="sortData('current')">Current Price ↕</th>
+                            <th class="p-4 text-center" onclick="sortData('drawdown')">Drop % ↕</th>
                             <th class="p-4 text-center bg-red-900/90">-10%</th>
                             <th class="p-4 text-center bg-red-900/90">-20%</th>
                             <th class="p-4 text-center bg-red-900/90">-30%</th>
@@ -82,7 +73,7 @@
                             <th class="p-4 text-center bg-red-800/90">-60%</th>
                             <th class="p-4 text-center bg-red-800/90">-70%</th>
                             <th class="p-4 text-center bg-red-800/90">-80%</th>
-                            <th class="p-4 text-center">X</th>
+                            <th class="p-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="watchlistBody" class="bg-white divide-y divide-slate-100"></tbody>
@@ -92,97 +83,112 @@
     </div>
 
     <script>
-        const API_KEY = '8572da2f27msh02d85ab8024e65dp174804jsn91d9d3efb8dd'; 
-        let stocks = JSON.parse(localStorage.getItem('myWatchlist')) || [];
-        let sortDir = true;
+        // All API code removed. This is purely manual and offline.
+        
+        const initialPortfolio = [
+            { name: "GGBL.NS", cap: "Small", high: 635.00, current: 250.85 },
+            { name: "MUTHOOTFIN.NS", cap: "Large", high: 4149.50, current: 1525.89 },
+            { name: "ZENTEC.NS", cap: "Mid", high: 2268.00, current: 1377.00 },
+            { name: "SENCO.NS", cap: "Small", high: 1544.00, current: 322.45 },
+            { name: "HDFCAMC.NS", cap: "Large", high: 3844.00, current: 2387.20 },
+            { name: "NETWEB.NS", cap: "Mid", high: 4479.00, current: 3222.00 },
+            { name: "DMART.NS", cap: "Large", high: 5900.00, current: 4548.20 },
+            { name: "JIOFIN.NS", cap: "Large", high: 394.70, current: 235.50 },
+            { name: "BAJAJFINSV.NS", cap: "Large", high: 1932.50, current: 1670.10 },
+            { name: "HAPPISTMND.NS", cap: "Small", high: 1580.80, current: 385.45 },
+            { name: "NEOGEN.NS", cap: "Small", high: 1950.00, current: 1194.50 },
+            { name: "BAJFINANCE.NS", cap: "Large", high: 8192.00, current: 850.90 },
+            { name: "HINDUNILVR.NS", cap: "Large", high: 2859.30, current: 2088.20 },
+            { name: "MAFANG.NS", cap: "ETF", high: 162.00, current: 156.81 },
+            { name: "METROPOLIS.NS", cap: "Mid", high: 3582.80, current: 430.50 },
+            { name: "HDFCBANK.NS", cap: "Large", high: 1757.80, current: 772.30 },
+            { name: "ROUTE.NS", cap: "Small", high: 2389.00, current: 462.05 },
+            { name: "ALKYLAMINE.NS", cap: "Small", high: 4749.00, current: 1321.50 },
+            { name: "DIXON.NS", cap: "Large", high: 11500.00, current: 10005.50 },
+            { name: "IEX.NS", cap: "Mid", high: 318.40, current: 126.41 },
+            { name: "RELAXO.NS", cap: "Mid", high: 1448.00, current: 272.83 },
+            { name: "CAMS.NS", cap: "Mid", high: 4532.00, current: 668.50 },
+            { name: "RTNINDIA.NS", cap: "Small", high: 84.00, current: 28.90 },
+            { name: "IRCTC.NS", cap: "Large", high: 1279.30, current: 515.20 },
+            { name: "AEROFLEX.NS", cap: "Small", high: 255.30, current: 255.30 },
+            { name: "ASIANPAINT.NS", cap: "Large", high: 3590.00, current: 2185.00 },
+            { name: "LICI.NS", cap: "Large", high: 1175.00, current: 744.55 },
+            { name: "BRITANNIA.NS", cap: "Large", high: 6468.00, current: 5528.00 },
+            { name: "DEEPAKNTR.NS", cap: "Mid", high: 3020.00, current: 1388.10 },
+            { name: "INFY.NS", cap: "Large", high: 1953.90, current: 1306.30 },
+            { name: "RELIANCE.NS", cap: "Large", high: 3217.90, current: 1305.60 },
+            { name: "LTIM.NS", cap: "Large", high: 7588.80, current: 4303.70 },
+            { name: "CLEAN.NS", cap: "Mid", high: 2705.00, current: 694.80 },
+            { name: "AARTIIND.NS", cap: "Mid", high: 1168.00, current: 404.45 },
+            { name: "DIVISLAB.NS", cap: "Large", high: 5425.10, current: 3600.50 },
+            { name: "SBICARD.NS", cap: "Large", high: 1164.00, current: 634.90 },
+            { name: "ULTRACEMCO.NS", cap: "Large", high: 12100.00, current: 10954.00 },
+            { name: "SUPRIYA.NS", cap: "Small", high: 615.20, current: 615.25 },
+            { name: "AFFLE.NS", cap: "Small", high: 1640.00, current: 1417.60 },
+            { name: "INDIAMART.NS", cap: "Mid", high: 9950.00, current: 2067.00 },
+            { name: "LATENTVIEW.NS", cap: "Small", high: 750.00, current: 300.15 },
+            { name: "ROLEXRINGS.NS", cap: "Small", high: 2600.00, current: 120.15 },
+            { name: "LALPATHLAB.NS", cap: "Mid", high: 4245.00, current: 1353.80 },
+            { name: "HDFCLIFE.NS", cap: "Large", high: 775.65, current: 579.60 },
+            { name: "NAUKRI.NS", cap: "Large", high: 7465.40, current: 992.25 },
+            { name: "JUBLFOOD.NS", cap: "Large", high: 950.00, current: 461.15 },
+            { name: "ASTRAL.NS", cap: "Large", high: 2450.00, current: 1522.00 },
+            { name: "LTTS.NS", cap: "Large", high: 6000.00, current: 3345.40 },
+            { name: "AARTIPHARM.NS", cap: "Small", high: 800.00, current: 649.00 },
+            { name: "BERGEPAINT.NS", cap: "Large", high: 854.00, current: 431.90 },
+            { name: "HLEGLAS.NS", cap: "Small", high: 1550.00, current: 271.35 }
+        ];
 
-        async function searchStocks(q) {
-            const box = document.getElementById('suggestionBox');
-            if (q.length < 2) { box.classList.add('hidden'); return; }
-            try {
-                const res = await fetch(`https://yh-finance.p.rapidapi.com/auto-complete?q=${q}&region=IN`, {
-                    headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'yh-finance.p.rapidapi.com' }
-                });
-                const data = await res.json();
-                box.innerHTML = ''; box.classList.remove('hidden');
-                data.quotes.filter(x => x.symbol.endsWith('.NS') || x.symbol.endsWith('.BO')).forEach(x => {
-                    const div = document.createElement('div');
-                    div.className = 'p-4 text-sm border-b border-slate-50 active:bg-slate-100 flex justify-between';
-                    div.innerHTML = `<span><strong>${x.symbol}</strong> <small class="text-slate-400">(${x.shortname || ''})</small></span>`;
-                    div.onclick = () => selectStock(x.symbol);
-                    box.appendChild(div);
-                });
-            } catch (e) { console.error(e); }
+        // Ensure old API-dependent data is cleared out on first load
+        if(localStorage.getItem('apiTrackerResetV2') !== 'true') {
+            localStorage.removeItem('myWatchlist');
+            localStorage.setItem('apiTrackerResetV2', 'true');
         }
 
-        async function selectStock(symbol) {
-            document.getElementById('stockSearch').value = symbol;
-            document.getElementById('suggestionBox').classList.add('hidden');
-            const data = await getLiveDetails(symbol);
-            if (data) {
-                document.getElementById('stockCurrent').value = data.price;
-                document.getElementById('stockHigh').value = data.high; 
-                document.getElementById('autoCapValue').value = data.cap;
-            }
-        }
+        let stocks = JSON.parse(localStorage.getItem('myWatchlist')) || initialPortfolio.map(s => {
+            let dd = (((s.high - s.current) / s.high) * 100).toFixed(1);
+            return { ...s, drawdown: dd, invested: [] };
+        });
 
-        async function getLiveDetails(symbol) {
-            try {
-                const res = await fetch(`https://yh-finance.p.rapidapi.com/market/v2/get-quotes?region=IN&symbols=${symbol}`, {
-                    headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'yh-finance.p.rapidapi.com' }
-                });
-                const r = await res.json();
-                const d = r.quoteResponse.result[0];
-                const mc = d.marketCap || 0;
-                return {
-                    price: d.regularMarketPrice.toFixed(2),
-                    high: Math.max(d.fiftyTwoWeekHigh, d.regularMarketPrice).toFixed(2),
-                    cap: mc > 2000000000000 ? "Large" : (mc > 500000000000 ? "Mid" : "Small")
-                };
-            } catch (e) { return null; }
-        }
-
-        async function refreshAllPrices() {
-            if (!stocks.length) return;
-            const icon = document.getElementById('refreshIcon');
-            icon.classList.add('animate-spin');
-            for (let i = 0; i < stocks.length; i++) {
-                const d = await getLiveDetails(stocks[i].name);
-                if (d) {
-                    stocks[i].current = d.price;
-                    if (parseFloat(d.price) > parseFloat(stocks[i].high)) stocks[i].high = d.price;
-                    stocks[i].drawdown = (((stocks[i].high - stocks[i].current) / stocks[i].high) * 100).toFixed(1);
-                }
-            }
-            updateUI();
-            icon.classList.remove('animate-spin');
-        }
+        let sortDir = {};
 
         function saveStock() {
-            const name = document.getElementById('stockSearch').value.toUpperCase();
+            const name = document.getElementById('stockSearch').value.toUpperCase().trim();
             const high = parseFloat(document.getElementById('stockHigh').value);
             const current = parseFloat(document.getElementById('stockCurrent').value);
-            const cap = document.getElementById('autoCapValue').value;
+            const cap = document.getElementById('manualCap').value;
+            const editIndex = parseInt(document.getElementById('editIndex').value);
 
-            if (stocks.find(s => s.name === name)) return alert("Already added.");
-            if (!name || isNaN(high)) return alert("Check inputs.");
-            
+            if (!name || isNaN(high) || isNaN(current)) return alert("Enter Symbol, Exact ATH, and Current Price");
+
             const dd = (((high - current) / high) * 100).toFixed(1);
-            // Added 'invested' array to track which of the 8 levels are selected
-            stocks.push({ name, cap, high, current, drawdown: dd, invested: [] });
+            const stockData = { name, high, current, cap, drawdown: dd, invested: (editIndex > -1 ? stocks[editIndex].invested : []) };
+
+            if (editIndex > -1) {
+                stocks[editIndex] = stockData;
+            } else {
+                stocks.push(stockData);
+            }
+            resetForm();
             updateUI();
-            document.getElementById('stockSearch').value = '';
-            document.getElementById('stockHigh').value = '';
-            document.getElementById('stockCurrent').value = '';
         }
 
-        function toggleInvested(stockIndex, levelIndex) {
-            const idx = stocks[stockIndex].invested.indexOf(levelIndex);
-            if (idx > -1) {
-                stocks[stockIndex].invested.splice(idx, 1);
-            } else {
-                stocks[stockIndex].invested.push(levelIndex);
-            }
+        function editStock(index) {
+            const s = stocks[index];
+            document.getElementById('stockSearch').value = s.name;
+            document.getElementById('stockHigh').value = s.high;
+            document.getElementById('stockCurrent').value = s.current;
+            document.getElementById('manualCap').value = s.cap;
+            document.getElementById('editIndex').value = index;
+            document.getElementById('saveBtn').innerText = "Update Entry";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleInvested(sIdx, lIdx) {
+            if(!stocks[sIdx].invested) stocks[sIdx].invested = [];
+            const idx = stocks[sIdx].invested.indexOf(lIdx);
+            if (idx > -1) stocks[sIdx].invested.splice(idx, 1);
+            else stocks[sIdx].invested.push(lIdx);
             updateUI();
         }
 
@@ -191,37 +197,44 @@
             const tbody = document.getElementById('watchlistBody');
             tbody.innerHTML = '';
             stocks.forEach((s, i) => {
-                let capCol = s.cap === 'Large' ? 'text-blue-600' : s.cap === 'Mid' ? 'text-purple-600' : 'text-orange-600';
+                let capCol = s.cap === 'Large' ? 'text-blue-600' : (s.cap === 'Mid' ? 'text-purple-600' : 'text-orange-600');
                 let row = `<tr class="text-[12px]">
-                    <td class="p-4 font-bold text-slate-800">${s.name}</td>
+                    <td class="p-4 font-bold sticky-col bg-white border-r">${s.name}</td>
                     <td class="p-4 font-black uppercase ${capCol}">${s.cap}</td>
-                    <td class="p-4 text-center text-slate-400 font-mono">₹${s.high}</td>
-                    <td class="p-4 text-center font-bold text-indigo-600 font-mono">₹${s.current}</td>
+                    <td class="p-4 text-center font-mono font-semibold text-slate-500">₹${s.high.toFixed(2)}</td>
+                    <td class="p-4 text-center font-bold text-indigo-600 font-mono">₹${s.current.toFixed(2)}</td>
                     <td class="p-4 text-center"><span class="bg-red-50 text-red-600 px-2 py-0.5 rounded font-black">-${s.drawdown}%</span></td>`;
                 
                 for (let j = 1; j <= 8; j++) {
                     let v = (s.high * (1 - (j * 10 / 100))).toFixed(2);
-                    let hitClass = parseFloat(s.current) <= parseFloat(v) ? 'is-hit' : 'text-slate-300 font-mono';
-                    let investedClass = (s.invested && s.invested.includes(j)) ? 'is-invested' : '';
-                    
-                    row += `<td class="p-4 text-center border-l border-slate-50 cursor-pointer ${hitClass} ${investedClass}" 
-                                onclick="toggleInvested(${i}, ${j})">
-                                ₹${v}
-                            </td>`;
+                    let hit = (parseFloat(s.current) > 0 && parseFloat(s.current) <= parseFloat(v)) ? 'is-hit' : 'text-slate-300 font-mono';
+                    let inv = (s.invested && s.invested.includes(j)) ? 'is-invested' : '';
+                    row += `<td class="p-4 text-center border-l border-slate-50 cursor-pointer ${hit} ${inv}" onclick="toggleInvested(${i}, ${j})">₹${v}</td>`;
                 }
-                row += `<td class="p-4 text-center"><button onclick="removeStock(${i})" class="text-slate-300 px-2">✕</button></td></tr>`;
+                row += `<td class="p-4 text-center"><div class="flex gap-2 justify-center">
+                    <button onclick="editStock(${i})" class="text-indigo-400">✎</button>
+                    <button onclick="removeStock(${i})" class="text-slate-300">✕</button>
+                </div></td></tr>`;
                 tbody.innerHTML += row;
             });
         }
 
         function sortData(key) {
-            sortDir = !sortDir;
+            sortDir[key] = !sortDir[key];
             stocks.sort((a, b) => {
                 let vA = isNaN(a[key]) ? a[key] : parseFloat(a[key]);
                 let vB = isNaN(b[key]) ? b[key] : parseFloat(b[key]);
-                return sortDir ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
+                return sortDir[key] ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
             });
             updateUI();
+        }
+
+        function resetForm() {
+            document.getElementById('stockSearch').value = '';
+            document.getElementById('stockHigh').value = '';
+            document.getElementById('stockCurrent').value = '';
+            document.getElementById('editIndex').value = '-1';
+            document.getElementById('saveBtn').innerText = "Save Changes";
         }
 
         function removeStock(i) { if(confirm('Remove?')) { stocks.splice(i, 1); updateUI(); } }
